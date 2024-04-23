@@ -1,0 +1,118 @@
+﻿@page "/changesalary"
+@using MySql.Data.MySqlClient
+@using System.Data
+@using System.Collections.Generic
+@using System
+
+<h1 class="mt-6">Employee List</h1>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <input type="text" class="form-control mb-3" @bind="searchQuery" placeholder="Search by name">
+            <button class="btn btn-primary" @onclick="Search">Search</button>
+            @if (showEmployeeList)
+            {
+                <h2>Employees</h2>
+                @if (searchedEmployees != null && searchedEmployees.Count > 0)
+                {
+                    @foreach (var employee in searchedEmployees)
+                    {
+                        <div class="form-check">
+                            <label class="form-check-label"><strong>@employee.FirstName @employee.LastName</strong></label>
+                            <div>Salary: $<input type="number" class="form-control" @bind="employee.Salary"></div>
+                            <div>ID: @employee.Id</div>
+                            <button class="btn btn-success mt-1" @onclick="() => SaveSalary(employee)">Save</button>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p>No employees found.</p>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Employees> employeelist;
+    private List<Employees> searchedEmployees;
+    private string searchQuery;
+    private bool showEmployeeList = false;
+
+    private void Search()
+    {
+        SearchedEmployees();
+        showEmployeeList = true;
+    }
+
+    protected override void OnInitialized()
+    {
+        employeelist = EmployeeDatabase();
+    }
+
+    private List<Employees> EmployeeDatabase()
+    {
+        var employeeList = new List<Employees>();
+        var connectionString = "server=127.0.0.1;user=root;password=password;database=oopemployees";
+
+        using (var connection = new MySqlConnection(connectionString))
+        {
+            connection.Open();
+            var query = "SELECT id, first_name, last_name, salary FROM employee";
+            using (var command = new MySqlCommand(query, connection))
+            {
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        employeeList.Add(new Employees
+                            {
+                                Id = reader.GetInt32(0),
+                                FirstName = reader.GetString(1),
+                                LastName = reader.GetString(2),
+                                Salary = reader.GetDecimal(3)
+                            });
+                    }
+                }
+            }
+        }
+
+        return employeeList;
+    }
+
+    private void SearchedEmployees()
+    {
+        searchedEmployees = employeelist.Where(employee =>
+            employee.FirstName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            employee.LastName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private void SaveSalary(Employees employee)
+    {
+        var connectionString = "server=127.0.0.1;user=root;password=password;database=oopemployees";
+
+        using (var connection = new MySqlConnection(connectionString))
+        {
+            connection.Open();
+            var query = "UPDATE employee SET salary = @salary WHERE id = @id";
+
+            using (var command = new MySqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@salary", employee.Salary);
+                command.Parameters.AddWithValue("@id", employee.Id);
+                command.ExecuteNonQuery();
+            }
+        }
+
+    }
+
+    public class Employees
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public decimal Salary { get; set; }
+    }
+}

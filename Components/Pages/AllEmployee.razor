@@ -1,0 +1,77 @@
+﻿@page "/display"
+@using MySql.Data.MySqlClient
+@using System.Data
+@using System.Collections.Generic
+
+<!--Creating HTML to display First Name, Last Name, ID, and Salary-->
+<h1 class="mt-6">Employee List</h1>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Employees</h2>
+            @foreach (var employee in employeelist)
+            {
+                <div class="form-check">
+                    <!--Making Employee name in bold when displayed by using "strong"-->
+                    <label class="form-check-label"><strong>@employee.FirstName @employee.LastName</strong></label>
+                    <!--Displaying Employee ID-->
+                    <div>ID: @employee.Id</div>
+                    <!--Displaying Salary with "$" in front of it-->
+                    <div>Salary: $@employee.Salary</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    //Populating "employeeList"
+    private List<Employees> employeelist;
+
+    protected override void OnInitialized()
+    {
+        employeelist = EmployeeDatabase();
+    }
+    //retrieve data from SQL database table named "employee" to create a list of Eployees
+    private List<Employees> EmployeeDatabase()
+    {
+        var employeeList = new List<Employees>();
+        var connectionString = "server=127.0.0.1;user=root;password=password;database=oopemployees";
+
+        using (var connection = new MySqlConnection(connectionString))
+        {
+            connection.Open();
+            //Selecting ID, Firstname Lastname and Salary columns from employee table
+            var query = "SELECT id, first_name, last_name, salary FROM employee";
+            using (var command = new MySqlCommand(query, connection))
+            {
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        //adding a new instance of Employees class to employeeList
+                        employeeList.Add(new Employees
+                            {
+                                Id = reader.GetInt32(0),
+                                FirstName = reader.GetString(1),
+                                LastName = reader.GetString(2),
+                                Salary = reader.GetInt32(3)
+                            });
+                    }
+                }
+            }
+        }
+
+        return employeeList;
+    }
+
+    //Getters and Setters for the class "Employees"
+    private class Employees
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public decimal Salary { get; set; }
+    }
+}

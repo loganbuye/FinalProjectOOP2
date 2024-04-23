@@ -1,0 +1,96 @@
+﻿@page "/search"
+@using MySql.Data.MySqlClient
+@inject NavigationManager NavigationManager
+
+<h3>Search Employees by Last Name</h3>
+
+<input @bind="enteredLastName" />
+<button @onclick="Search">Enter</button>
+
+@if (results != null)
+{
+    <table>
+        <thead>
+            <tr>
+                <!--Headers for found employee table-->
+                <th>Id</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Salary</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!--Populates a table with the found employee-->
+            @foreach (var employee in results)
+            {
+                <tr>
+                    <!--Found employee id-->
+                    <td>@employee.Id</td>
+                    <!--Found employee first and last names-->
+                    <td>@employee.FirstName</td>
+                    <td>@employee.LastName</td>
+                    <!--Found employee salary-->
+                    <td>$@employee.Salary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    //Stores the last name entered by the user
+    private string enteredLastName;
+    //Results list stores the found search result(s)
+    private List<Employee> results;
+
+    //Search the SQL database "employee" table for the entered last name
+    private async Task Search()
+    {
+        //String used to connect to the HeidiSql database
+        var connectionString = "server=127.0.0.1;user=root;password=password;database=oopemployees";
+        //Creates a new results list
+        results = new List<Employee>();
+
+        //Create new database connection using the connection string
+        using (MySqlConnection connection = new MySqlConnection(connectionString))
+        {
+            //SQL query to select the id, first name, last name and salary of an employee whos last name matches the entered last name
+            string query = "SELECT id, first_name, last_name, salary FROM employee WHERE last_name LIKE @LastName";
+            //Create new sql command using the query and connection
+            MySqlCommand command = new MySqlCommand(query, connection);
+            //Add paramters to the sql command
+            command.Parameters.AddWithValue("@LastName", "%" + enteredLastName + "%");
+
+            
+            //Execute sql query
+            await connection.OpenAsync();
+            var reader = await command.ExecuteReaderAsync();
+            using (MySqlDataReader mySqlReader = (MySqlDataReader)reader)
+            {
+                while (await mySqlReader.ReadAsync())
+                {
+                    //Store found employees in results list
+                    results.Add(new Employee
+                    {  
+                        Id = Convert.ToInt32(mySqlReader["id"]),
+                        FirstName = mySqlReader["first_name"].ToString(),
+                        LastName = mySqlReader["last_name"].ToString(),
+                        Salary = Convert.ToInt32(mySqlReader["salary"])
+                    });
+                }
+            }
+            
+            
+        }
+    }
+
+    //Employee class with getters and setters
+    public class Employee
+    {
+        public int Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public int Salary { get; set; }
+    }
+}
+
